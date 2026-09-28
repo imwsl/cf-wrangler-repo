@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>订单详情 · AGC 礼品卡</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<script>(function(){try{var t=localStorage.getItem('agc_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<link rel="stylesheet" href="/assets/ui.css">
+<script src="/assets/app.js" defer></script>
+</head>
+<body>
+
+<header class="nav" id="siteNav" data-active="orders"></header>
+
+<div class="order-shell" id="orderShell">
+  <div class="skeleton" style="height:200px;margin-top:24px"></div>
+</div>
+
+<footer class="site-foot" id="siteFoot"></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var params = new URLSearchParams(location.search);
+  var id = params.get('id') || '';
+  var key = params.get('key') || '';
+  var shell = document.getElementById('orderShell');
+  var timer = null;
+  var payInfo = null;
+  var last = null;
+
+  if (!key && id) {
+    var saved = ACG.getSavedOrder(id);
+    if (saved) key = saved.key;
+  }
+
+  function stepper(status) {
+    var idx = status === 'delivered' ? 2 : (status === 'claimed' || status === 'paid') ? 1 : 0;
+    var labels = ['已下单', status === 'paid' ? '备货中' : '待核实', '已交付'];
+    return '<div class="stepper">' + labels.map(function (label, i) {
+      return '<div class="sp' + (i <= idx ? ' on' : '') + '">' + label + '</div>';
+    }).join('') + '</div>';
+  }
+
+  function payPanel(o) {
+    var qr = o.payMethod === 'alipay' ? (payInfo && payInfo.alipayQr || '') : (payInfo && payInfo.wechatQr || '');
+    var methodName = o.payMethod === 'alipay' ? '支付宝' : '微信';
+    var claimed = o.status === 'claimed';
+    var tail = o.id.slice(-4);
+    return '<div class="pay-panel">' +
+      '<div class="qr-box">' + (qr
+        ? '<img src="' + ACG.esc(qr) + '" alt="' + methodName + '收款码">'
+        : '<div class="qr-empty">商家尚未上传' + methodName + '收款码<br>请联系客服付款</div>') + '</div>' +
+      '<p class="amount-tip">请支付 <b>' + ACG.yuan(o.amount) + '</b>（' + methodName + '）</p>' +
+      '<p class="hint" style="margin-bottom:16px">付款时请备注订单号后四位：<b style="font-family:ui-monospace,monospace">' + ACG.esc(tail) + '</b></p>' +
+      (claimed
+        ? '<p class="tag info" style="padding:8px 16px">已提交付款，等待客服核实</p>'
+        : '<button type="button" class="btn btn-dark btn-lg" id="claimBtn">我已付款</button>') +
+      '<p class="hint" style="margin-top:14px">客服微信：' + ACG.esc((payInfo && payInfo.contactWechat) || '-') + '</p>' +
+      '</div>';
+  }
+
+  function codesPanel(o) {
+    return '<div class="card">' +
+      '<h2>🎉 卡密已交付</h2>' +
+      '<p class="sub">在对应区域的 App Store 兑换，兑换方法见 <a href="/guide#redeem" style="text-decoration:underline">使用须知</a>。</p>' +
+      o.codes.map(function (code) {
+        return '<div class="code-item"><code>' + ACG.esc(code) + '</code><button type="button" class="btn btn-sm" data-copy="' + ACG.esc(code) + '">复制</button></div>';
+      }).join('') +
+      '<p class="hint" style="margin-top:8px">共 ' + o.codes.length + ' 张 · 卡密一次性使用，请勿截图外发</p>' +
+      '</div>';
+  }
+
+  function statusPanel(o) {
+    if (o.status === 'pending' || o.status === 'claimed') {
+      return '<div class="card">' + payPanel(o) + '</div>';
+    }
+    if (o.status === 'paid') {
+      return '<div class="card" style="text-align:center;padding:36px">' +
+        '<p style="font-size:34px;margin-bottom:8px">⏳</p>' +
+        '<h2>已确认收款，正在备货</h2>' +
+        '<p class="sub" style="margin:8px 0 0">卡密准备中，本页面会自动刷新，请稍候。</p>' +
+        '</div>';
+    }
+    if (o.status === 'delivered') return codesPanel(o);
+    return '<div class="card" style="text-align:center;padding:36px">' +
+      '<p style="font-size:34px;margin-bottom:8px">🙁</p>' +
+      '<h2>订单已取消</h2>' +
+      '<p class="sub" style="margin:8px 0 0">如有疑问请联系客服处理。</p>' +
+      '</div>';
+  }
+
+  function render(o) {
+    last = o;
+    shell.innerHTML =
+      '<div class="order-top">' +
+        '<div>' +
+          '<span class="eyebrow brand">订单详情</span>' +
+          '<h1 style="margin:8px 0 4px;font-size:26px">' + ACG.esc(o.productName) + ' × ' + o.quantity + '</h1>' +
+          '<div class="order-id">' + ACG.esc(o.id) + ' · ' + ACG.fmtTime(o.createdAt) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' + ACG.statusTag(o.status) + '</div>' +
+      '</div>' +
+      stepper(o.status) +
+      '<div class="co-grid" style="padding:0">' +
+        '<div>' + statusPanel(o) + '</div>' +
+        '<div>' +
+          '<div class="card">' +
+            '<h2>订单信息</h2>' +
+            '<p class="sub">截图保存订单号与查询凭证，可随时回来查单。</p>' +
+            '<div class="summary-row"><span class="k">订单号</span><span class="v" style="font-family:ui-monospace,monospace">' + ACG.esc(o.id) + '</span></div>' +
+            '<div class="summary-row"><span class="k">查询凭证</span><span class="v" style="font-family:ui-monospace,monospace">' + ACG.esc(key) + '</span></div>' +
+            '<div class="summary-row"><span class="k">面值</span><span class="v">' + ACG.esc(o.face || '-') + '</span></div>' +
+            '<div class="summary-row"><span class="k">数量</span><span class="v">× ' + o.quantity + '</span></div>' +
+            '<div class="summary-row"><span class="k">金额</span><span class="v">' + ACG.yuan(o.amount) + '</span></div>' +
+            '<div class="summary-row"><span class="k">联系方式</span><span class="v">' + ACG.esc(o.contact) + '</span></div>' +
+            '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">' +
+              '<a class="btn" href="/orders">我的订单</a>' +
+              '<button type="button" class="btn" id="kefuBtn">联系客服</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    shell.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        ACG.copy(btn.dataset.copy);
+      });
+    });
+    var claimBtn = document.getElementById('claimBtn');
+    if (claimBtn) {
+      claimBtn.addEventListener('click', async function () {
+        claimBtn.disabled = true;
+        claimBtn.textContent = '提交中…';
+        try {
+          var updated = await ACG.api('/api/orders/' + encodeURIComponent(id) + '/claim', {
+            method: 'POST',
+            body: { key: key }
+          });
+          ACG.toast('已提交，客服核实后发卡');
+          render(updated);
+        } catch (err) {
+          ACG.toast(err.message);
+          claimBtn.disabled = false;
+          claimBtn.textContent = '我已付款';
+        }
+      });
+    }
+    var kefuBtn = document.getElementById('kefuBtn');
+    if (kefuBtn) kefuBtn.addEventListener('click', ACG.openKefu);
+  }
+
+  function startPolling() {
+    if (timer) return;
+    timer = setInterval(load, 8000);
+  }
+
+  async function load() {
+    try {
+      if (!payInfo) {
+        payInfo = await ACG.api('/api/pay').catch(function () { return {}; });
+      }
+      var o = await ACG.api('/api/orders/' + encodeURIComponent(id) + '?key=' + encodeURIComponent(key));
+      ACG.saveOrder({
+        id: o.id,
+        key: key,
+        productName: o.productName,
+        amount: o.amount,
+        quantity: o.quantity,
+        status: o.status,
+        createdAt: o.createdAt
+      });
+      render(o);
+      if (o.status === 'pending' || o.status === 'claimed' || o.status === 'paid') {
+        startPolling();
+      } else if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    } catch (err) {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      if (!last) {
+        shell.innerHTML = '<div class="empty" style="margin-top:32px">' + ACG.esc(err.message) + '<br><br><a class="btn" href="/orders">去查其他订单</a></div>';
+      }
+    }
+  }
+
+  if (!id || !key) {
+    shell.innerHTML = '<div class="empty" style="margin-top:32px">缺少订单参数，请从「我的订单」进入。<br><br><a class="btn" href="/orders">我的订单</a></div>';
+  } else {
+    load();
+  }
+});
+</script>
+</body>
+</html>

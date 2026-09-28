@@ -1,0 +1,17 @@
+{
+  "name": "apple-giftcard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Apple 礼品卡下单网站（Cloudflare Workers + D1）",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply apple-giftcard-db --remote",
+    "db:migrate:local": "wrangler d1 migrations apply apple-giftcard-db --local",
+    "db:seed": "wrangler d1 execute apple-giftcard-db --remote --file=./seed.sql",
+    "db:seed:local": "wrangler d1 execute apple-giftcard-db --local --file=./seed.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

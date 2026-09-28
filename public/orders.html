@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的订单 · AGC 礼品卡</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<script>(function(){try{var t=localStorage.getItem('agc_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<link rel="stylesheet" href="/assets/ui.css">
+<script src="/assets/app.js" defer></script>
+</head>
+<body>
+
+<header class="nav" id="siteNav" data-active="orders"></header>
+
+<div class="container page-head">
+  <span class="eyebrow brand">订单中心</span>
+  <h1>我的订单</h1>
+  <p class="muted">本机保存的订单可直接点开查看；换设备可用「订单号 + 查询凭证」找回。</p>
+</div>
+
+<div class="container" style="padding-bottom:64px;max-width:860px">
+  <div class="card">
+    <h2>订单号查单</h2>
+    <p class="sub">输入下单时保存的订单号与查询凭证。</p>
+    <div class="grid-2">
+      <div class="field">
+        <label for="lookupId">订单号</label>
+        <input class="input" id="lookupId" placeholder="AGC20260928-4821" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="lookupKey">查询凭证</label>
+        <input class="input" id="lookupKey" placeholder="6 位大写字母数字" autocomplete="off">
+      </div>
+    </div>
+    <button type="button" class="btn btn-dark" id="lookupBtn">查询订单 →</button>
+  </div>
+
+  <div style="margin:28px 0 14px;display:flex;align-items:center;justify-content:space-between">
+    <h2 style="font-size:18px">本机订单</h2>
+    <button type="button" class="btn btn-sm" id="clearBtn">清除记录</button>
+  </div>
+  <div class="order-list" id="orderList"></div>
+</div>
+
+<footer class="site-foot" id="siteFoot"></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var listEl = document.getElementById('orderList');
+
+  function item(o) {
+    return '<a class="order-item" href="/order?id=' + encodeURIComponent(o.id) + '&key=' + encodeURIComponent(o.key) + '">' +
+      '<div class="oi-main">' +
+        '<div class="oi-title">' + ACG.esc(o.productName || '订单') + ' × ' + (o.quantity || 1) + ' · ' + ACG.yuan(o.amount || 0) + '</div>' +
+        '<div class="oi-meta">' + ACG.esc(o.id) + ' · ' + ACG.fmtTime(o.createdAt) + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        ACG.statusTag(o.status || 'pending') +
+        '<span class="muted">→</span>' +
+      '</div>' +
+    '</a>';
+  }
+
+  function render() {
+    var list = ACG.savedOrders();
+    listEl.innerHTML = list.length
+      ? list.map(item).join('')
+      : '<div class="empty">还没有本机订单记录。<br><br><a class="btn btn-dark" href="/#shop">去选卡</a></div>';
+  }
+
+  async function refresh() {
+    var list = ACG.savedOrders();
+    await Promise.all(list.slice(0, 20).map(async function (o) {
+      try {
+        var latest = await ACG.api('/api/orders/' + encodeURIComponent(o.id) + '?key=' + encodeURIComponent(o.key));
+        ACG.saveOrder({
+          id: o.id,
+          key: o.key,
+          productName: latest.productName,
+          amount: latest.amount,
+          quantity: latest.quantity,
+          status: latest.status,
+          createdAt: latest.createdAt
+        });
+      } catch (e) {}
+    }));
+    render();
+  }
+
+  document.getElementById('lookupBtn').addEventListener('click', function () {
+    var id = document.getElementById('lookupId').value.trim().toUpperCase();
+    var key = document.getElementById('lookupKey').value.trim().toUpperCase();
+    if (!id || !key) {
+      ACG.toast('请填写订单号和查询凭证');
+      return;
+    }
+    location.href = '/order?id=' + encodeURIComponent(id) + '&key=' + encodeURIComponent(key);
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    if (!confirm('确定清除本机保存的订单记录？（不影响服务器上的订单）')) return;
+    try {
+      localStorage.removeItem('agc_orders');
+    } catch (e) {}
+    render();
+  });
+
+  render();
+  refresh();
+});
+</script>
+</body>
+</html>

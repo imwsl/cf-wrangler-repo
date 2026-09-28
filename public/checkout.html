@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>确认下单 · AGC 礼品卡</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<script>(function(){try{var t=localStorage.getItem('agc_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<link rel="stylesheet" href="/assets/ui.css">
+<script src="/assets/app.js" defer></script>
+</head>
+<body>
+
+<header class="nav" id="siteNav" data-active="shop"></header>
+
+<div class="container page-head">
+  <span class="eyebrow brand">确认下单</span>
+  <h1>核对商品，填写联系方式</h1>
+  <p class="muted">提交后生成订单并显示收款码，按金额付款即可。</p>
+</div>
+
+<div class="container co-grid">
+  <div id="formCol">
+    <div class="card">
+      <h2>商品信息</h2>
+      <p class="sub">由首页商品列表进入，如需更换请返回。</p>
+      <div id="productBox"><div class="skeleton" style="height:120px"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>购买数量</h2>
+      <p class="sub">单笔最多 10 张，数量多可联系客服走批发价。</p>
+      <div class="qty">
+        <button type="button" id="qtyMinus" aria-label="减少">−</button>
+        <span id="qtyNum">1</span>
+        <button type="button" id="qtyPlus" aria-label="增加">+</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>联系方式</h2>
+      <p class="sub">微信号或邮箱，用于核对付款和售后，不会公开。</p>
+      <div class="field" style="margin-bottom:0">
+        <label for="contact">微信号 / 邮箱</label>
+        <input class="input" id="contact" maxlength="64" placeholder="例如：wxid_abc 或 you@example.com" autocomplete="off">
+        <p class="hint">付款后请保持联系方式可添加，客服会与你核对。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>付款方式</h2>
+      <p class="sub">选择后订单页会显示对应收款码。</p>
+      <div class="pay-methods">
+        <label class="pay-method active">
+          <input type="radio" name="pay" value="wechat" checked>
+          <span class="ico">💚</span> 微信支付
+        </label>
+        <label class="pay-method">
+          <input type="radio" name="pay" value="alipay">
+          <span class="ico">💙</span> 支付宝
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="position:sticky;top:84px">
+      <h2>订单金额</h2>
+      <p class="sub">以提交后订单页显示的金额为准。</p>
+      <div class="summary-row"><span class="k">商品</span><span class="v" id="sumName">-</span></div>
+      <div class="summary-row"><span class="k">单价</span><span class="v" id="sumPrice">-</span></div>
+      <div class="summary-row"><span class="k">数量</span><span class="v" id="sumQty">× 1</span></div>
+      <div class="total-bar">
+        <span class="k muted">应付金额</span>
+        <span class="amount" id="sumTotal">-</span>
+      </div>
+      <button type="button" class="btn btn-dark btn-lg" id="submitBtn" style="width:100%">提交订单，去付款 →</button>
+      <p class="hint" style="text-align:center;margin-top:10px">提交即表示同意 <a href="/guide" style="text-decoration:underline">使用须知</a></p>
+    </div>
+  </div>
+</div>
+
+<footer class="site-foot" id="siteFoot"></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var sku = new URLSearchParams(location.search).get('sku') || '';
+  var product = null;
+  var qty = 1;
+  var productBox = document.getElementById('productBox');
+  var submitBtn = document.getElementById('submitBtn');
+
+  function renderProduct() {
+    if (!product) {
+      productBox.innerHTML = '<div class="empty">没有找到该商品，可能已下架。<br><br><a class="btn" href="/#shop">返回选卡</a></div>';
+      submitBtn.disabled = true;
+      return;
+    }
+    productBox.innerHTML =
+      '<div class="summary-row"><span class="k">商品</span><span class="v">' + ACG.esc(product.name) + '</span></div>' +
+      '<div class="summary-row"><span class="k">区域</span><span class="v">' + ACG.esc(product.categoryName) + '</span></div>' +
+      '<div class="summary-row"><span class="k">面值</span><span class="v">' + ACG.esc(product.face || '-') + '</span></div>' +
+      '<div class="summary-row"><span class="k">库存</span><span class="v">' + (product.stock ? product.stock + ' 张' : '暂时补货中') + '</span></div>';
+    if (!product.stock) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = '该面值暂时补货中';
+    }
+  }
+
+  function renderTotal() {
+    document.getElementById('qtyNum').textContent = qty;
+    document.getElementById('sumQty').textContent = '× ' + qty;
+    if (!product) return;
+    document.getElementById('sumName').textContent = product.name;
+    document.getElementById('sumPrice').textContent = ACG.yuan(product.price);
+    document.getElementById('sumTotal').textContent = ACG.yuan(product.price * qty);
+  }
+
+  document.getElementById('qtyMinus').addEventListener('click', function () {
+    qty = Math.max(1, qty - 1);
+    renderTotal();
+  });
+  document.getElementById('qtyPlus').addEventListener('click', function () {
+    qty = Math.min(10, qty + 1);
+    renderTotal();
+  });
+
+  document.querySelectorAll('.pay-method').forEach(function (label) {
+    label.addEventListener('click', function () {
+      document.querySelectorAll('.pay-method').forEach(function (l) { l.classList.remove('active'); });
+      label.classList.add('active');
+    });
+  });
+
+  submitBtn.addEventListener('click', async function () {
+    if (!product) return;
+    var contact = document.getElementById('contact').value.trim();
+    if (contact.length < 2) {
+      ACG.toast('请先填写微信号或邮箱');
+      document.getElementById('contact').focus();
+      return;
+    }
+    var payMethod = document.querySelector('input[name="pay"]:checked').value;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '正在创建订单…';
+    try {
+      var order = await ACG.api('/api/orders', {
+        method: 'POST',
+        body: { productId: product.id, quantity: qty, contact: contact, payMethod: payMethod }
+      });
+      ACG.saveOrder({
+        id: order.id,
+        key: order.key,
+        productName: order.productName,
+        amount: order.amount,
+        quantity: order.quantity,
+        status: order.status,
+        createdAt: order.createdAt
+      });
+      location.href = '/order?id=' + encodeURIComponent(order.id) + '&key=' + encodeURIComponent(order.key);
+    } catch (err) {
+      ACG.toast(err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = '提交订单，去付款 →';
+    }
+  });
+
+  if (!sku) {
+    renderProduct();
+  } else {
+    ACG.api('/api/config').then(function (cfg) {
+      product = (cfg.products || []).find(function (p) { return p.id === sku; }) || null;
+      renderProduct();
+      renderTotal();
+    }).catch(function () {
+      productBox.innerHTML = '<div class="empty">商品加载失败，请刷新重试。</div>';
+      submitBtn.disabled = true;
+    });
+  }
+});
+</script>
+</body>
+</html>

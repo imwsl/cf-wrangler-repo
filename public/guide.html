@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使用须知与兑换教程 · AGC 礼品卡</title>
+<meta name="description" content="Apple 礼品卡兑换教程：App Store 兑换步骤、区域限制说明、常见问题与售后政策。">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<script>(function(){try{var t=localStorage.getItem('agc_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<link rel="stylesheet" href="/assets/ui.css">
+<script src="/assets/app.js" defer></script>
+</head>
+<body>
+
+<header class="nav" id="siteNav" data-active="guide"></header>
+
+<div class="prose">
+  <span class="eyebrow brand">使用须知</span>
+  <h1 style="margin:10px 0 8px;font-size:clamp(28px,4vw,40px);font-weight:900">买卡之后，先看这里</h1>
+  <p>Apple 礼品卡是虚拟商品，卡密一次性使用。兑换前请花两分钟确认区域和步骤，能避免绝大多数问题。</p>
+
+  <div class="callout">最重要的规则：礼品卡区域必须与 Apple ID 账号区域一致。美区卡只能美区账号兑换，港区卡只能港区账号兑换，兑错了无法撤销。</div>
+
+  <h2 id="redeem">一、兑换步骤（iPhone / iPad）</h2>
+  <ol class="steps-mini">
+    <li>打开 App Store，点右上角你的头像。</li>
+    <li>选择「兑换充值卡或代码」→「手动输入兑换码」。</li>
+    <li>粘贴或输入订单页复制的卡密，确认兑换。</li>
+    <li>余额会充值到当前登录的 Apple ID，可在头像页查看余额。</li>
+  </ol>
+  <h3>Mac 上兑换</h3>
+  <p>打开 App Store → 左下角头像 → 「兑换充值卡或代码」，输入卡密即可。</p>
+
+  <h2>二、区域怎么确认</h2>
+  <ul>
+    <li>打开 App Store，滑到最底部可以看到当前账号所在国家 / 地区。</li>
+    <li>想用其他区的礼品卡，需要切换 Apple ID 区域或使用对应区域的账号，切换前注意清空余额、取消订阅。</li>
+    <li>本店商品标题已标注区域，请对照购买。</li>
+  </ul>
+
+  <h2>三、注意事项</h2>
+  <ul>
+    <li>卡密一经兑换立即生效，无法转回，请勿截图外发、勿在陌生网站输入。</li>
+    <li>卡密为一次性使用，兑换成功后再无余额说明已被使用过，请第一时间联系客服。</li>
+    <li>建议先小额测试再购买大面值。</li>
+    <li>本站为第三方零售，与 Apple Inc. 无关联；请遵守 Apple 服务条款及当地法律法规。</li>
+  </ul>
+
+  <h2>四、售后政策</h2>
+  <ul>
+    <li>卡密交付后 24 小时内，若因卡密本身问题无法兑换，核实后免费补换新卡。</li>
+    <li>若卡密已被兑换、或因为账号区域不符导致无法兑换，不在售后范围内。</li>
+    <li>虚拟商品不支持无理由退款，下单前请确认区域与面值。</li>
+  </ul>
+  <p style="margin-top:28px">
+    <button type="button" class="btn btn-outline" id="kefuBtn">联系客服</button>
+    <a class="btn btn-dark" href="/#shop" style="margin-left:10px">去选卡 →</a>
+  </p>
+</div>
+
+<footer class="site-foot" id="siteFoot"></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('kefuBtn').addEventListener('click', ACG.openKefu);
+});
+</script>
+</body>
+</html>
